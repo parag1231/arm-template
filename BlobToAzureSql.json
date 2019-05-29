@@ -1,0 +1,214 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "mlstorageaccount": {
+      "type": "string"
+    },
+    "SqlServerName": {
+      "type": "string",
+      "metadata": {
+        "description": " Azure SQL Database Server name"
+      }
+    },
+    "DatabaseName": {
+      "type": "string",
+      "metadata": {
+        "description": " taget Azure SQL Database name"
+      }
+    },
+
+    "SqlServerUserName": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure SQL Database Server user name"
+      }
+    },
+
+    "SqlServerPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": " Azure SQL Database Server password"
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "maxLength": 24
+    },
+    "datafactoryname": {
+      "type": "string"
+    },
+    "datafactorylocation": {
+      "type": "string",
+      "allowedValues": [
+        "eastus",
+        "westus",
+        "East US",
+        "West US",
+        "northeurope",
+        "North Europe "
+
+      ]
+
+
+    },
+    "guid": {
+      "type": "string",
+      "defaultValue": "pid-8fad6b47-2bc8-5140-8022-148d25942560"
+    }
+
+  },
+  "variables": {
+    "StorageAccountName": "[parameters('mlstorageaccount')]",
+    "existingStorageAccountName": "[parameters('storageAccountName')]",
+    "storageType": "Standard_LRS",
+    "azureSqlLinkedServiceName": "AzureSqlLinkedService",
+    "storageLinkedServiceName": "StorageLinkedService",
+    "storageApiVersion": "2015-05-01-preview",
+    "datafactoryapiVersion": "2015-10-01",
+    "namePrefix": "[resourceGroup().name]",
+    "mlVersion": "2016-04-01",
+    "machinelearningLocation": "west Europe",
+    "location": "[resourceGroup().location]",
+    "mlWorkspaceName": "[concat(variables('namePrefix'),'mlwk')]",
+    "mlResourceId": "[resourceId('Microsoft.MachineLearning/workspaces', variables('mlWorkspaceName'))]",
+    "stgResourceId": "[resourceId('Microsoft.Storage/storageAccounts', variables('StorageAccountName'))]"
+
+  },
+
+  "resources": [
+
+    { // add this resource to the resources section in the mainTemplate.json (do not add the entire file)
+      "apiVersion": "2018-02-01",
+      "name": "[concat(parameters('guid'))]", // use your generated GUID here
+      "type": "Microsoft.Resources/deployments",
+      "properties": {
+        "mode": "Incremental",
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "resources": []
+        }
+      }
+    }, // remove all comments from the file when complete
+
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[variables('existingStorageAccountName')]",
+      "location": "[variables('location')]",
+      "properties": {
+        "accountType": "[variables('storageType')]"
+      }
+    },
+
+    {
+      "apiVersion": "2015-05-01-preview",
+      "name": "[variables('storageAccountName')]",
+      "type": "Microsoft.Storage/storageAccounts",
+      "location": "[variables('location')]",
+      "properties": {
+        "accountType": "Standard_LRS"
+      }
+    },
+    {
+      "apiVersion": "[variables('mlVersion')]",
+      "type": "Microsoft.MachineLearning/workspaces",
+      "name": "[variables('mlWorkspaceName')]",
+      "location": "[variables('location')]",
+      "dependsOn": [
+        "[variables('stgResourceId')]"
+
+      ],
+      "properties": {
+        "UserStorageAccountId": "[variables('stgResourceId')]"
+      }
+    },
+
+    {
+      "type": "Microsoft.Sql/servers",
+      "kind": "v12.0",
+      "name": "[parameters('SqlServerName')]",
+      "apiVersion": "2014-04-01-preview",
+      "location": "[variables('location')]",
+      "properties": {
+        "administratorLogin": "[parameters('SqlServerUserName')]",
+        "administratorLoginPassword": "[parameters('SqlServerPassword')]",
+        "version": "12.0"
+      },
+      "resources": [
+        {
+          "name": "[parameters('DatabaseName')]",
+          "type": "databases",
+          "location": "[variables('location')]",
+          "tags": {
+            "displayName": "Database"
+          },
+          "apiVersion": "2014-04-01-preview",
+          "dependsOn": [
+            "[resourceId('Microsoft.Sql/servers', parameters('SqlServerName'))]"
+          ],
+          "properties": {
+            "edition": "Basic",
+            "collation": "SQL_Latin1_General_CP1_CI_AS",
+            "maxSizeBytes": "1073741824",
+            "requestedServiceObjectiveName": "Basic"
+          }
+        },
+        {
+          "type": "firewallrules",
+          "apiVersion": "2014-04-01-preview",
+          "dependsOn": [
+            "[resourceId('Microsoft.Sql/servers', parameters('SqlServerName'))]"
+          ],
+          "location": "[resourceGroup().location]",
+          "name": "AllowAllWindowsAzureIps",
+          "properties": {
+            "endIpAddress": "255.255.255.255",
+            "startIpAddress": "0.0.0.0"
+          }
+        }
+
+      ],
+      "dependsOn": []
+    },
+    {
+      "comments": "Data factory with two linked services and data transfer from blob storage to sql",
+      "type": "Microsoft.DataFactory/datafactories",
+      "name": "[parameters('datafactoryname')]",
+      "apiVersion": "2015-10-01",
+      "location": "[parameters('datafactorylocation')]",
+      "tags": {},
+      "properties": {},
+      "resources": [
+
+      ]
+    }
+  ],
+  "outputs": {
+    "storageAccountName": {
+      "type": "string",
+      "value": "[variables('existingStorageAccountName')]"
+    },
+    "datafactoryName": {
+      "type": "string",
+      "value": "[parameters('datafactoryname')]"
+    },
+    "machineLearning": {
+      "type": "string",
+      "value": "[variables('mlWorkspaceName')]"
+    },
+    "databaseName": {
+      "type": "string",
+      "value": "[parameters('DatabaseName')]"
+    },
+    "serverName": {
+      "type": "string",
+      "value": "[parameters('SqlServerName')]"
+    },
+    "uniqueString": {
+      "type": "string",
+      "value": "[uniqueString(resourceGroup().id)]"
+    }
+  }
+}

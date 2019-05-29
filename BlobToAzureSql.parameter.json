@@ -1,0 +1,33 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+
+    "mlstorageaccount": {
+      "value": "dimlonejson"
+    },
+    "SqlServerName": {
+      "value": "disqlsvrabjson"
+    },
+    "DatabaseName": {
+      "value": "disqldbjson"
+    },
+
+    "SqlServerUserName": {
+      "value": "disqlsvrab"
+    },
+
+    "storageAccountName": {
+      "value": "disaaccjson"
+    },
+    "datafactoryname": {
+      "value": "disqldfjson"
+    },
+    "datafactorylocation": {
+      "value": "eastus"
+    }
+
+
+  }
+}
+
